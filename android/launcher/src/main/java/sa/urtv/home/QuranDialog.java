@@ -129,7 +129,7 @@ final class QuranDialog {
                     .putString("quran_reciter", rid)
                     .putInt("quran_surah", surah)
                     .apply();
-            QuranPlayer.get().play(rid, surah);
+            QuranPlayer.get().play(ctx, rid, surah);
             status.setText("جاري التحميل…");
         });
         stopBtn.setOnClickListener(v -> {

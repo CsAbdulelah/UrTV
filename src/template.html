@@ -1298,14 +1298,10 @@ document.addEventListener('keydown', e=>{
 
 boot();
 
-/* Quran scheduler: streams the default surah by the default reciter at each of
- * the five prayers plus 09:00. A small gold dot pulses by the clock while it
- * plays and dims as soon as the screen is hidden. Audio comes from mp3quran.net
- * (same source as the launcher's picker). The upstream page is the source of
- * truth: tweak the defaults here and Updater delivers them to the TV. */
+/* ============ QURAN SCHEDULER (added by Claude for the user) ============ */
 const QURAN_CFG = {
-  reciter: 'abdullah-qarafi',   // عبدالله القرافي
-  surah: 2,                     // البقرة
+  reciter: 'abdullah-qarafi',   // Al-Qurafi
+  surah: 2,                     // Al-Baqara
   playAt9AM: true,
   playAtPrayers: true,
   showIndicator: true
@@ -1341,11 +1337,24 @@ function quranIndicator(on){
   }
   dot.style.opacity = on ? '1' : '0';
 }
+// Read the current wall-clock HH:MM in CONFIG.timezone, matching how DAY_TIMES is
+// computed, so the schedule works for any configured city (Jeddah, Dammam, Mecca…),
+// not just Riyadh.
+function quranNowHHMM(){
+  const parts = new Intl.DateTimeFormat('en-GB',{
+    timeZone: CONFIG.timezone, hour:'2-digit', minute:'2-digit', hour12:false
+  }).formatToParts(new Date());
+  const hh = parts.find(p=>p.type==='hour').value;
+  const mm = parts.find(p=>p.type==='minute').value;
+  return hh + ':' + mm;
+}
+function quranDayKey(){
+  return new Intl.DateTimeFormat('en-CA',{timeZone: CONFIG.timezone}).format(new Date());
+}
 function quranTick(){
   if(typeof DAY_TIMES === 'undefined' || !DAY_TIMES) return;
-  const now = new Date();
-  const cur = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-  const key = now.toDateString() + '|' + cur;
+  const cur = quranNowHHMM();
+  const key = quranDayKey() + '|' + cur;
   if(quranFiredKey === key) return;
   let fire = false;
   if(QURAN_CFG.playAt9AM && cur === '09:00') fire = true;
@@ -1369,6 +1378,7 @@ quranAudio.addEventListener('ended', () => { quranPlaying = false; quranIndicato
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'hidden' && quranPlaying) quranStop();
 });
+/* ============ END QURAN SCHEDULER ============ */
 </script>
 </body>
 </html>
