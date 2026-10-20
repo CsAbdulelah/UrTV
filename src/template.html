@@ -1297,6 +1297,78 @@ document.addEventListener('keydown', e=>{
 });
 
 boot();
+
+/* Quran scheduler: streams the default surah by the default reciter at each of
+ * the five prayers plus 09:00. A small gold dot pulses by the clock while it
+ * plays and dims as soon as the screen is hidden. Audio comes from mp3quran.net
+ * (same source as the launcher's picker). The upstream page is the source of
+ * truth: tweak the defaults here and Updater delivers them to the TV. */
+const QURAN_CFG = {
+  reciter: 'abdullah-qarafi',   // عبدالله القرافي
+  surah: 2,                     // البقرة
+  playAt9AM: true,
+  playAtPrayers: true,
+  showIndicator: true
+};
+const quranAudio = new Audio();
+quranAudio.preload = 'none';
+quranAudio.crossOrigin = 'anonymous';
+let quranPlaying = false;
+let quranFiredKey = null;
+function quranUrl(){
+  return `https://cdn.mp3quran.net/audio/${QURAN_CFG.reciter}/r1/${String(QURAN_CFG.surah).padStart(3,'0')}.mp3`;
+}
+function quranPlay(){
+  try { quranAudio.src = quranUrl(); } catch(e){ return; }
+  const p = quranAudio.play();
+  if (p && p.then) p.then(()=>{ quranPlaying = true; quranIndicator(true); }).catch(()=>{});
+}
+function quranStop(){
+  try { quranAudio.pause(); quranAudio.currentTime = 0; } catch(e){}
+  quranPlaying = false;
+  quranIndicator(false);
+}
+function quranIndicator(on){
+  if(!QURAN_CFG.showIndicator) return;
+  let dot = document.getElementById('quran-dot');
+  if(!dot){
+    const s = document.createElement('style');
+    s.textContent = '@keyframes qpulse{0%,100%{opacity:.3}50%{opacity:1}}#quran-dot{position:fixed;top:3vh;right:3.6vw;z-index:100;width:1vh;height:1vh;border-radius:50%;background:#DCB86F;box-shadow:0 0 2vh #DCB86F;animation:qpulse 1.4s ease-in-out infinite;opacity:0;transition:opacity .4s ease;pointer-events:none}';
+    document.head.appendChild(s);
+    dot = document.createElement('div');
+    dot.id = 'quran-dot';
+    document.body.appendChild(dot);
+  }
+  dot.style.opacity = on ? '1' : '0';
+}
+function quranTick(){
+  if(typeof DAY_TIMES === 'undefined' || !DAY_TIMES) return;
+  const now = new Date();
+  const cur = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  const key = now.toDateString() + '|' + cur;
+  if(quranFiredKey === key) return;
+  let fire = false;
+  if(QURAN_CFG.playAt9AM && cur === '09:00') fire = true;
+  if(QURAN_CFG.playAtPrayers){
+    for(const k of ['Fajr','Dhuhr','Asr','Maghrib','Isha']){
+      if(DAY_TIMES[k] && String(DAY_TIMES[k]).substring(0,5) === cur){ fire = true; break; }
+    }
+  }
+  if(fire){ quranFiredKey = key; if(!quranPlaying) quranPlay(); }
+}
+// Unlock audio on load (plays a silent buffer so autoplay works later)
+setTimeout(() => {
+  try {
+    const s = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAAFRJVDIAAAABAAAAVFNTRQAAAAEAAAB//////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==");
+    s.volume = 0;
+    s.play().catch(()=>{});
+  } catch(e){}
+}, 800);
+setInterval(quranTick, 15000);
+quranAudio.addEventListener('ended', () => { quranPlaying = false; quranIndicator(false); });
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden' && quranPlaying) quranStop();
+});
 </script>
 </body>
 </html>
