@@ -66,7 +66,19 @@ public final class QuranPlayer {
                 stop();
                 return true;
             });
-            mp.setOnCompletionListener(p -> stop());
+            mp.setOnCompletionListener(p -> {
+                // Auto-advance: Al-Fatiha → Al-Baqara → … → An-Nas, then stop.
+                if (currentSurah < 114) {
+                    int next = currentSurah + 1;
+                    try { mp.release(); } catch (Exception ignored) {}
+                    mp = null;
+                    currentSurah = next;
+                    retries = 0;
+                    doPlay();
+                } else {
+                    stop();
+                }
+            });
             mp.prepareAsync();
         } catch (Exception e) {
             if (retries++ < MAX_RETRIES) restart(); else stop();

@@ -1315,11 +1315,25 @@ function quranUrl(){
   return `https://cdn.mp3quran.net/audio/${QURAN_CFG.reciter}/r1/${String(QURAN_CFG.surah).padStart(3,'0')}.mp3`;
 }
 function quranPlay(){
+  // Prefer the native service: it owns a foreground MediaPlayer that keeps playing
+  // after the Dream is dismissed, so the user controls stop from the launcher's
+  // «القرآن» pill (same place they'd start it) instead of «any button stops it».
+  if (window.UrTvHost && typeof UrTvHost.playQuran === 'function') {
+    try {
+      if (UrTvHost.playQuran(QURAN_CFG.reciter, QURAN_CFG.surah)) {
+        quranPlaying = true; quranIndicator(true); return;
+      }
+    } catch(e){}
+  }
+  // Fallback for plain browsers (dashboard URL opened in TV Bro): HTML5 audio.
   try { quranAudio.src = quranUrl(); } catch(e){ return; }
   const p = quranAudio.play();
   if (p && p.then) p.then(()=>{ quranPlaying = true; quranIndicator(true); }).catch(()=>{});
 }
 function quranStop(){
+  if (window.UrTvHost && typeof UrTvHost.stopQuran === 'function') {
+    try { UrTvHost.stopQuran(); } catch(e){}
+  }
   try { quranAudio.pause(); quranAudio.currentTime = 0; } catch(e){}
   quranPlaying = false;
   quranIndicator(false);
@@ -1389,9 +1403,11 @@ quranAudio.addEventListener('ended', () => {
     quranIndicator(false);
   }
 });
-document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'hidden' && quranPlaying) quranStop();
-});
+// Previously stopped on visibilitychange, which killed the recitation the moment
+// the user pressed any button to dismiss the screensaver. The native QuranService
+// keeps playing after the WebView is destroyed; the user stops it from the
+// launcher's «القرآن» pill. For the plain-browser fallback (no UrTvHost), the
+// WebView tear-down stops HTML5 audio naturally.
 /* ============ END QURAN SCHEDULER ============ */
 </script>
 </body>
