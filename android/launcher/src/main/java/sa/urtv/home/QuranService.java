@@ -37,14 +37,17 @@ public class QuranService extends Service {
         if (reciter == null) reciter = "abdullah-qarafi";
 
         startForeground(NOTIF_ID, buildNotification(reciter, surah));
+        // The callback now only fires on real transitions: started (OnPrepared) or
+        // stopped (explicit stop or end of An-Nas). Mid-surah releases are silent,
+        // so stopSelf() will not be called during an auto-advance.
         QuranPlayer.get().setOnStateChanged(() -> {
-            if (!QuranPlayer.get().isPlaying()) {
+            QuranPlayer p = QuranPlayer.get();
+            if (!p.isPlaying()) {
                 stopForeground(true);
                 stopSelf();
             } else {
                 NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                if (nm != null) nm.notify(NOTIF_ID, buildNotification(
-                        QuranPlayer.get().reciterId(), QuranPlayer.get().surah()));
+                if (nm != null) nm.notify(NOTIF_ID, buildNotification(p.reciterId(), p.surah()));
             }
         });
         QuranPlayer.get().play(getApplicationContext(), reciter, surah);

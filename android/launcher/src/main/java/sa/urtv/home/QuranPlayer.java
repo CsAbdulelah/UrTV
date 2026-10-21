@@ -41,11 +41,22 @@ public final class QuranPlayer {
 
     public void play(Context ctx, String reciterId, int surah) {
         appCtx = ctx.getApplicationContext();
-        stop();
+        releaseMp();  // silent cleanup of any previous player — do NOT fire onState
         currentReciter = reciterId;
         currentSurah = surah;
         retries = 0;
         doPlay();
+    }
+
+    /** Release the MediaPlayer without touching focus or firing onState. Used for
+     *  intermediate transitions (surah → next surah, retry) that should not look
+     *  like a stop to listeners. */
+    private void releaseMp() {
+        if (mp != null) {
+            try { if (mp.isPlaying()) mp.stop(); } catch (Exception ignored) {}
+            try { mp.release(); } catch (Exception ignored) {}
+            mp = null;
+        }
     }
 
     private void doPlay() {
@@ -69,11 +80,9 @@ public final class QuranPlayer {
             mp.setOnCompletionListener(p -> {
                 // Auto-advance: Al-Fatiha → Al-Baqara → … → An-Nas, then stop.
                 if (currentSurah < 114) {
-                    int next = currentSurah + 1;
-                    try { mp.release(); } catch (Exception ignored) {}
-                    mp = null;
-                    currentSurah = next;
+                    currentSurah += 1;
                     retries = 0;
+                    releaseMp();  // silent — do not fire onState for the transition
                     doPlay();
                 } else {
                     stop();
@@ -86,21 +95,14 @@ public final class QuranPlayer {
     }
 
     private void restart() {
-        if (mp != null) {
-            try { mp.release(); } catch (Exception ignored) {}
-            mp = null;
-        }
+        releaseMp();  // silent — a retry is not a user-visible stop
         // small pause so the CDN edge recovers
         try { Thread.sleep(400); } catch (InterruptedException ignored) {}
         doPlay();
     }
 
     public void stop() {
-        if (mp != null) {
-            try { if (mp.isPlaying()) mp.stop(); } catch (Exception ignored) {}
-            try { mp.release(); } catch (Exception ignored) {}
-            mp = null;
-        }
+        releaseMp();
         releaseFocus();
         if (onState != null) onState.run();
     }
