@@ -111,6 +111,10 @@ public final class QuranPlayer {
         if (appCtx == null) return true;
         am = (AudioManager) appCtx.getSystemService(Context.AUDIO_SERVICE);
         if (am == null) return true;
+        // Abandon any previous focus request first. Otherwise the system fires
+        // AUDIOFOCUS_LOSS on the old listener (which calls stop() and abandons
+        // the brand-new request), killing playback the moment it starts.
+        releaseFocus();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focusReq = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                     .setAudioAttributes(new AudioAttributes.Builder()
