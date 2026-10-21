@@ -36,6 +36,9 @@ final class ScreenView {
         // lets the page call Yahoo and other APIs directly, without a CORS gateway
         s.setAllowFileAccessFromFileURLs(true);
         s.setAllowUniversalAccessFromFileURLs(true);
+        // Let the Quran scheduler play audio without a prior user tap (the screensaver
+        // has no interaction — Chromium would otherwise block autoplay).
+        s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);   // photos are cached by PhotoCache, data must be fresh
         if (android.os.Build.VERSION.SDK_INT >= 23) s.setOffscreenPreRaster(true);   // draw before it is shown
         w.loadUrl(new Prefs(c).dashboardUrl(c));

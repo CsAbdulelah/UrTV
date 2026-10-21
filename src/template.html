@@ -1374,7 +1374,21 @@ setTimeout(() => {
   } catch(e){}
 }, 800);
 setInterval(quranTick, 15000);
-quranAudio.addEventListener('ended', () => { quranPlaying = false; quranIndicator(false); });
+// Auto-advance to the next surah when one ends, so the recitation keeps going
+// (Al-Baqara → Aal-Imran → …). Stops after An-Nas or if the Dream is dismissed.
+quranAudio.addEventListener('ended', () => {
+  if (QURAN_CFG.surah < 114 && document.visibilityState !== 'hidden') {
+    QURAN_CFG.surah += 1;
+    try {
+      quranAudio.src = quranUrl();
+      const p = quranAudio.play();
+      if (p && p.then) p.then(()=>{ quranPlaying = true; quranIndicator(true); }).catch(()=>{});
+    } catch(e) { quranPlaying = false; quranIndicator(false); }
+  } else {
+    quranPlaying = false;
+    quranIndicator(false);
+  }
+});
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'hidden' && quranPlaying) quranStop();
 });
